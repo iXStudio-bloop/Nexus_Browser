@@ -299,4 +299,5 @@
         function closeTab(e, id) { e.stopPropagation(); if (tabs.length > 1) { tabs = tabs.filter(t => t.id !== id); document.getElementById(`tab-btn-${id}`).remove(); document.getElementById(`view-${id}`).remove(); switchTab(tabs[0].id); } }
     </script>
 </body>
+
 </html>
