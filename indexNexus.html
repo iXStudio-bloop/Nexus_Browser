@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Browser</title>
+    <style>
+        :root {
+            --nexus-green: #27ae60;
+            --nexus-dark-green: #1b4d2e;
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --panel-bg: #f5f6fa;
+            --key-shadow: #bdc3c7;
+        }
+
+        body.dark-mode {
+            --nexus-green: #2d5a27;
+            --nexus-dark-green: #1a2e1a;
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --panel-bg: #1e1e1e;
+            --key-shadow: #000000;
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg-color); color: var(--text-color);
+            overflow: hidden; transition: 0.3s;
+        }
+
+        /* Кнопки-клавиши */
+        .key-btn {
+            background: var(--nexus-green); border: none; border-radius: 6px;
+            box-shadow: 0 3px 0 var(--nexus-dark-green); color: white;
+            cursor: pointer; font-weight: bold; padding: 8px 15px;
+            display: flex; align-items: center; justify-content: center; transition: 0.1s;
+        }
+        .key-btn:active { box-shadow: 0 1px 0 var(--nexus-dark-green); transform: translateY(2px); }
+
+        /* Шапка */
+        .top-bar { background: var(--nexus-dark-green); padding: 5px 10px 0; display: flex; gap: 5px; align-items: flex-end; }
+        .tab {
+            background: #2d6a4f; color: white; padding: 8px 15px;
+            border-radius: 8px 8px 0 0; cursor: pointer; font-size: 12px; min-width: 100px;
+            display: flex; justify-content: space-between; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .tab.active { background: var(--nexus-green); border-color: white; }
+
+        .navbar {
+            background: var(--panel-bg); padding: 10px;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 2px solid var(--nexus-green);
+        }
+        .nav-controls { display: flex; gap: 10px; align-items: center; }
+
+        /* Центрированный поиск */
+        .search-wrapper { 
+            position: relative; 
+            width: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; /* Центровка по горизонтали */
+        }
+        
+        #suggestions {
+            position: absolute; top: 110%; left: 50%; transform: translateX(-50%); width: 90%; max-width: 550px;
+            background: var(--bg-color); border: 1px solid var(--nexus-green);
+            border-radius: 10px; z-index: 1000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .suggest-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee; color: var(--text-color); text-align: left; }
+        .suggest-item:hover { background: var(--nexus-green); color: white; }
+
+        .main-search-box {
+            width: 90%; max-width: 550px; 
+            display: flex; background: var(--bg-color);
+            border: 2px solid var(--nexus-green); border-radius: 30px; padding: 12px 25px;
+        }
+        .main-search-input { border: none; outline: none; width: 100%; font-size: 18px; background: transparent; color: var(--text-color); }
+
+        /* Контентная зона */
+        .viewport-container { height: calc(100vh - 110px); position: relative; }
+        iframe { width: 100%; height: 100%; border: none; display: none; }
+        iframe.active { display: block; }
+
+        /* Главная страница */
+        .nexus-home {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 10;
+        }
+        .nexus-home.hidden { display: none; }
+        .nexus-logo { 
+            font-size: 80px; font-weight: bold; color: var(--nexus-green); 
+            letter-spacing: 10px; transition: 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .home-ui { opacity: 0; transition: 0.8s; text-align: center; width: 100%; }
+        
+        .nexus-home.loaded .nexus-logo { transform: translateY(-80px) scale(0.6); }
+        .nexus-home.loaded .home-ui { opacity: 1; transform: translateY(-40px); }
+
+        /* Регистрация и Настройки */
+        #auth-overlay, #settings-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center; z-index: 5000;
+        }
+        #auth-overlay { background: var(--nexus-dark-green); }
+        #settings-modal { background: rgba(0,0,0,0.6); display: none; }
+        .modal-content, .auth-card {
+            background: var(--bg-color); padding: 40px; border-radius: 15px;
+            text-align: center; border: 4px solid var(--nexus-green); width: 350px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="auth-overlay">
+        <div class="auth-card">
+            <h2 id="lang-welcome">NEXUS REGISTRATION</h2>
+            <input type="text" id="reg-name" placeholder="Name">
+            <input type="text" id="reg-username" placeholder="Username">
+            <input type="email" id="reg-email" placeholder="email@gmail.com">
+            <button class="key-btn" onclick="saveProfile()" style="width: 100%">START</button>
+        </div>
+    </div>
+
+    <div id="settings-modal">
+        <div class="modal-content">
+            <h3 id="set-title">Настройки</h3>
+            <p id="set-theme-lbl">Тема:</p>
+            <select id="theme-select" onchange="toggleTheme()">
+                <option value="light">Светлая</option>
+                <option value="dark">Тёмная</option>
+            </select>
+            <p id="set-lang-lbl">Язык:</p>
+            <select id="lang-select-box" onchange="changeLang()">
+                <option value="ru">Русский</option>
+                <option value="en">English</option>
+                <option value="zh">中文</option>
+            </select>
+            <hr>
+            <button class="key-btn" onclick="resetAccount()" id="set-reset-btn" style="width:100%">Сбросить</button>
+            <button class="key-btn" onclick="closeSettings()" style="margin-top: 10px; width: 100%; background: #95a5a6; box-shadow: 0 3px 0 #7f8c8d;">OK</button>
+        </div>
+    </div>
+
+    <div class="top-bar" id="tabs-bar">
+        <button class="key-btn" onclick="createNewTab()" style="padding: 2px 10px; margin-bottom: 5px;">+</button>
+    </div>
+
+    <div class="navbar">
+        <div class="nav-controls">
+            <button class="key-btn" onclick="goBack()">&#129044;</button>
+            <button class="key-btn" onclick="goForward()">&#129046;</button>
+            <button class="key-btn" onclick="goHome()">🏠</button>
+            <button class="key-btn" onclick="refreshTab()">&#10227;</button>
+        </div>
+        <button class="key-btn" onclick="openSettings()">&#9881;</button>
+    </div>
+
+    <div class="viewport-container" id="viewports">
+        <div id="nexus-home-screen" class="nexus-home">
+            <div class="nexus-logo">NEXUS</div>
+            <div class="home-ui">
+                <h1 id="home-greeting">Добро пожаловать!</h1>
+                <p id="home-sub">Что желаете найти?</p>
+                <div class="search-wrapper">
+                    <div class="main-search-box">
+                        <input type="text" class="main-search-input" id="main-search" placeholder="Search..." onkeypress="handleMainKey(event)" oninput="fetchSuggestions(this)">
+                    </div>
+                    <div id="suggestions"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tabs = [];
+        let activeTabId = null;
+        const i18n = {
+            ru: { welcome: "РЕГИСТРАЦИЯ NEXUS", set: "Настройки", t: "Тема:", l: "Язык:", r: "Сбросить аккаунт", g: "Добро пожаловать", s: "Что желаете найти?" },
+            en: { welcome: "NEXUS REGISTRATION", set: "Settings", t: "Theme:", l: "Language:", r: "Reset Account", g: "Welcome", s: "What do you want to find?" },
+            zh: { welcome: "NEXUS 注册", set: "设置", t: "主题:", l: "语言:", r: "重置账户", g: "欢迎", s: "你想找什么？" }
+        };
+
+        window.onload = () => {
+            if (localStorage.getItem('nexus_user')) {
+                document.getElementById('auth-overlay').style.display = 'none';
+                applyTheme(localStorage.getItem('nexus_theme') || 'light');
+                changeLang(localStorage.getItem('nexus_lang') || 'ru');
+                createNewTab();
+            }
+        };
+
+        function saveProfile() {
+            const email = document.getElementById('reg-email').value;
+            const name = document.getElementById('reg-name').value;
+            if (email.endsWith('@gmail.com') && name) {
+                localStorage.setItem('nexus_user', JSON.stringify({name}));
+                location.reload();
+            } else { alert("Gmail only!"); }
+        }
+
+        function createNewTab() {
+            const id = Date.now();
+            tabs.push({ id, isHome: true });
+            const tabBtn = document.createElement('div');
+            tabBtn.className = 'tab';
+            tabBtn.id = `tab-btn-${id}`;
+            tabBtn.innerHTML = `Nexus <span onclick="closeTab(event, ${id})">×</span>`;
+            tabBtn.onclick = () => switchTab(id);
+            document.getElementById('tabs-bar').insertBefore(tabBtn, document.querySelector('#tabs-bar .key-btn'));
+            const ifr = document.createElement('iframe');
+            ifr.id = `view-${id}`;
+            document.getElementById('viewports').appendChild(ifr);
+            switchTab(id);
+            const home = document.getElementById('nexus-home-screen');
+            home.classList.remove('loaded');
+            setTimeout(() => home.classList.add('loaded'), 50);
+        }
+
+        function switchTab(id) {
+            activeTabId = id;
+            const tab = tabs.find(t => t.id === id);
+            document.querySelectorAll('.tab, iframe').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-btn-${id}`).classList.add('active');
+            document.getElementById(`view-${id}`).classList.add('active');
+            const home = document.getElementById('nexus-home-screen');
+            if (tab.isHome) {
+                home.classList.remove('hidden');
+                const user = JSON.parse(localStorage.getItem('nexus_user'));
+                const lang = localStorage.getItem('nexus_lang') || 'ru';
+                document.getElementById('home-greeting').innerText = `${i18n[lang].g}, ${user.name}!`;
+                document.getElementById('main-search').value = "";
+            } else home.classList.add('hidden');
+        }
+
+        function navigate(query) {
+            if (!query) return;
+            document.getElementById('suggestions').style.display = 'none';
+            let url = query.includes('.') && !query.includes(' ') ? (query.startsWith('http') ? query : 'https://' + query) : `https://www.google.com/search?q=${encodeURIComponent(query)}&igu=1`;
+            const tab = tabs.find(t => t.id === activeTabId);
+            tab.isHome = false;
+            document.getElementById('nexus-home-screen').classList.add('hidden');
+            document.getElementById(`view-${activeTabId}`).src = url;
+        }
+
+        function fetchSuggestions(input) {
+            const query = input.value;
+            if (query.length < 2) { document.getElementById('suggestions').style.display = 'none'; return; }
+            const script = document.createElement('script');
+            script.src = `https://suggestqueries.google.com/complete/search?client=firefox&q=${query}&callback=showSuggest`;
+            document.body.appendChild(script);
+        }
+
+        window.showSuggest = (data) => {
+            const box = document.getElementById('suggestions');
+            box.innerHTML = data[1].slice(0, 5).map(s => `<div class="suggest-item" onclick="navigate('${s}')">${s}</div>`).join('');
+            box.style.display = 'block';
+        };
+
+        function goHome() {
+            const tab = tabs.find(t => t.id === activeTabId);
+            tab.isHome = true;
+            switchTab(activeTabId);
+        }
+
+        function changeLang() {
+            const l = document.getElementById('lang-select-box').value;
+            localStorage.setItem('nexus_lang', l);
+            const t = i18n[l];
+            document.getElementById('lang-welcome').innerText = t.welcome;
+            document.getElementById('set-title').innerText = t.set;
+            document.getElementById('set-theme-lbl').innerText = t.t;
+            document.getElementById('set-lang-lbl').innerText = t.l;
+            document.getElementById('set-reset-btn').innerText = t.r;
+            document.getElementById('home-sub').innerText = t.s;
+        }
+
+        function toggleTheme() {
+            const theme = document.getElementById('theme-select').value;
+            applyTheme(theme);
+        }
+
+        function applyTheme(theme) {
+            document.body.className = theme + '-mode';
+            localStorage.setItem('nexus_theme', theme);
+            document.getElementById('theme-select').value = theme;
+        }
+
+        function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; }
+        function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+        function resetAccount() { localStorage.clear(); location.reload(); }
+        function handleMainKey(e) { if (e.key === 'Enter') navigate(e.target.value); }
+        function goBack() { document.getElementById(`view-${activeTabId}`).contentWindow.history.back(); }
+        function goForward() { document.getElementById(`view-${activeTabId}`).contentWindow.history.forward(); }
+        function refreshTab() { const i = document.getElementById(`view-${activeTabId}`); i.src = i.src; }
+        function closeTab(e, id) { e.stopPropagation(); if (tabs.length > 1) { tabs = tabs.filter(t => t.id !== id); document.getElementById(`tab-btn-${id}`).remove(); document.getElementById(`view-${id}`).remove(); switchTab(tabs[0].id); } }
+    </script>
+</body>
+</html>
