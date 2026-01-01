@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Browser</title>
+    <title>Nexus Browser Engine</title>
     <style>
         :root {
             --nexus-green: #27ae60;
@@ -11,7 +11,6 @@
             --bg-color: #ffffff;
             --text-color: #333333;
             --panel-bg: #f5f6fa;
-            --key-shadow: #bdc3c7;
         }
 
         body.dark-mode {
@@ -20,7 +19,6 @@
             --bg-color: #000000;
             --text-color: #ffffff;
             --panel-bg: #1e1e1e;
-            --key-shadow: #000000;
         }
 
         body, html {
@@ -30,7 +28,6 @@
             overflow: hidden; transition: 0.3s;
         }
 
-        /* Кнопки-клавиши */
         .key-btn {
             background: var(--nexus-green); border: none; border-radius: 6px;
             box-shadow: 0 3px 0 var(--nexus-dark-green); color: white;
@@ -39,35 +36,28 @@
         }
         .key-btn:active { box-shadow: 0 1px 0 var(--nexus-dark-green); transform: translateY(2px); }
 
-        /* Шапка */
-        .top-bar { background: var(--nexus-dark-green); padding: 5px 10px 0; display: flex; gap: 5px; align-items: flex-end; }
+        .top-bar { background: var(--nexus-dark-green); padding: 5px 10px 0; display: flex; gap: 5px; align-items: flex-end; position: relative; z-index: 1001; }
         .tab {
             background: #2d6a4f; color: white; padding: 8px 15px;
-            border-radius: 8px 8px 0 0; cursor: pointer; font-size: 12px; min-width: 100px;
-            display: flex; justify-content: space-between; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px 8px 0 0; cursor: pointer; font-size: 12px; min-width: 120px;
+            display: flex; justify-content: space-between; border: 1px solid rgba(255,255,255,0.1); align-items: center;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .tab.active { background: var(--nexus-green); border-color: white; }
+        .tab span { margin-left: 10px; opacity: 0.7; font-weight: bold; }
 
         .navbar {
             background: var(--panel-bg); padding: 10px;
             display: flex; align-items: center; justify-content: space-between;
-            border-bottom: 2px solid var(--nexus-green);
+            border-bottom: 2px solid var(--nexus-green); position: relative; z-index: 1000;
         }
         .nav-controls { display: flex; gap: 10px; align-items: center; }
 
-        /* Центрированный поиск */
-        .search-wrapper { 
-            position: relative; 
-            width: 100%; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; /* Центровка по горизонтали */
-        }
-        
+        .search-wrapper { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; }
         #suggestions {
             position: absolute; top: 110%; left: 50%; transform: translateX(-50%); width: 90%; max-width: 550px;
             background: var(--bg-color); border: 1px solid var(--nexus-green);
-            border-radius: 10px; z-index: 1000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            border-radius: 10px; z-index: 2000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
         .suggest-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #eee; color: var(--text-color); text-align: left; }
         .suggest-item:hover { background: var(--nexus-green); color: white; }
@@ -79,74 +69,90 @@
         }
         .main-search-input { border: none; outline: none; width: 100%; font-size: 18px; background: transparent; color: var(--text-color); }
 
-        /* Контентная зона */
         .viewport-container { height: calc(100vh - 110px); position: relative; }
         iframe { width: 100%; height: 100%; border: none; display: none; }
         iframe.active { display: block; }
 
-        /* Главная страница */
+        /* ИГРА */
+        #game-box {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #87CEEB; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 50;
+        }
+        canvas { background: #fff; border: 4px solid var(--nexus-dark-green); border-radius: 10px; }
+
         .nexus-home {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-color); display: flex; flex-direction: column;
             align-items: center; justify-content: center; z-index: 10;
         }
         .nexus-home.hidden { display: none; }
-        .nexus-logo { 
-            font-size: 80px; font-weight: bold; color: var(--nexus-green); 
-            letter-spacing: 10px; transition: 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+        .nexus-logo { font-size: 80px; font-weight: bold; color: var(--nexus-green); letter-spacing: 10px; transition: 1.2s; }
         .home-ui { opacity: 0; transition: 0.8s; text-align: center; width: 100%; }
-        
         .nexus-home.loaded .nexus-logo { transform: translateY(-80px) scale(0.6); }
         .nexus-home.loaded .home-ui { opacity: 1; transform: translateY(-40px); }
 
-        /* Регистрация и Настройки */
-        #auth-overlay, #settings-modal {
+        #auth-overlay, #settings-modal, #history-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; align-items: center; justify-content: center; z-index: 5000;
         }
-        #auth-overlay { background: var(--nexus-dark-green); }
-        #settings-modal { background: rgba(0,0,0,0.6); display: none; }
+        #settings-modal, #history-modal { background: rgba(0,0,0,0.6); display: none; }
         .modal-content, .auth-card {
-            background: var(--bg-color); padding: 40px; border-radius: 15px;
-            text-align: center; border: 4px solid var(--nexus-green); width: 350px;
+            background: var(--bg-color); padding: 30px; border-radius: 15px;
+            text-align: center; border: 4px solid var(--nexus-green); width: 380px; max-height: 80vh; overflow-y: auto;
         }
+
+        /* История */
+        .history-list { text-align: left; margin-top: 15px; }
+        .history-item { 
+            display: flex; justify-content: space-between; padding: 10px; 
+            border-bottom: 1px solid #ddd; cursor: pointer; border-radius: 4px;
+        }
+        .history-item:hover { background: var(--panel-bg); }
+        .history-item span.del { color: #e74c3c; font-weight: bold; padding: 0 5px; }
     </style>
 </head>
-<body>
+<body onkeydown="handleGlobalKey(event)">
 
     <div id="auth-overlay">
         <div class="auth-card">
             <h2 id="lang-welcome">NEXUS REGISTRATION</h2>
-            <input type="text" id="reg-name" placeholder="Name">
-            <input type="text" id="reg-username" placeholder="Username">
-            <input type="email" id="reg-email" placeholder="email@gmail.com">
+            <input type="text" id="reg-name" placeholder="Name" style="padding: 10px; width: 80%;">
+            <input type="email" id="reg-email" placeholder="email@gmail.com" style="margin: 10px 0; width: 80%; padding: 10px;">
             <button class="key-btn" onclick="saveProfile()" style="width: 100%">START</button>
         </div>
     </div>
 
     <div id="settings-modal">
         <div class="modal-content">
-            <h3 id="set-title">Настройки</h3>
-            <p id="set-theme-lbl">Тема:</p>
-            <select id="theme-select" onchange="toggleTheme()">
-                <option value="light">Светлая</option>
-                <option value="dark">Тёмная</option>
+            <h3 id="set-title"></h3>
+            <p id="set-theme-lbl"></p>
+            <select id="theme-select" onchange="toggleTheme()" style="width: 100%; padding: 5px;">
+                <option value="light" id="opt-light"></option>
+                <option value="dark" id="opt-dark"></option>
             </select>
-            <p id="set-lang-lbl">Язык:</p>
-            <select id="lang-select-box" onchange="changeLang()">
+            <p id="set-lang-lbl" style="margin-top:15px"></p>
+            <select id="lang-select-box" onchange="changeLang()" style="width: 100%; padding: 5px;">
                 <option value="ru">Русский</option>
                 <option value="en">English</option>
                 <option value="zh">中文</option>
             </select>
-            <hr>
-            <button class="key-btn" onclick="resetAccount()" id="set-reset-btn" style="width:100%">Сбросить</button>
-            <button class="key-btn" onclick="closeSettings()" style="margin-top: 10px; width: 100%; background: #95a5a6; box-shadow: 0 3px 0 #7f8c8d;">OK</button>
+            <hr style="margin: 20px 0">
+            <button class="key-btn" onclick="resetAccount()" id="set-reset-btn" style="width:100%; background: #e74c3c;">Reset</button>
+            <button class="key-btn" onclick="closeSettings()" style="margin-top: 10px; width: 100%; background: #95a5a6;">OK</button>
+        </div>
+    </div>
+
+    <div id="history-modal">
+        <div class="modal-content">
+            <h3 id="hist-title"></h3>
+            <div id="history-container" class="history-list"></div>
+            <button class="key-btn" onclick="closeHistory()" style="margin-top: 20px; width: 100%; background: #95a5a6;">Close</button>
         </div>
     </div>
 
     <div class="top-bar" id="tabs-bar">
         <button class="key-btn" onclick="createNewTab()" style="padding: 2px 10px; margin-bottom: 5px;">+</button>
+        <button id="close-all-btn" class="key-btn" onclick="closeAllTabs()" style="display:none; padding: 2px 10px; margin-bottom: 5px; background: #e74c3c; margin-left: 10px;"></button>
     </div>
 
     <div class="navbar">
@@ -156,15 +162,18 @@
             <button class="key-btn" onclick="goHome()">🏠</button>
             <button class="key-btn" onclick="refreshTab()">&#10227;</button>
         </div>
-        <button class="key-btn" onclick="openSettings()">&#9881;</button>
+        <div style="display: flex; gap: 10px;">
+            <button class="key-btn" onclick="openHistory()">📖</button>
+            <button class="key-btn" onclick="openSettings()">&#9881;</button>
+        </div>
     </div>
 
     <div class="viewport-container" id="viewports">
         <div id="nexus-home-screen" class="nexus-home">
             <div class="nexus-logo">NEXUS</div>
             <div class="home-ui">
-                <h1 id="home-greeting">Добро пожаловать!</h1>
-                <p id="home-sub">Что желаете найти?</p>
+                <h1 id="home-greeting"></h1>
+                <p id="home-sub"></p>
                 <div class="search-wrapper">
                     <div class="main-search-box">
                         <input type="text" class="main-search-input" id="main-search" placeholder="Search..." onkeypress="handleMainKey(event)" oninput="fetchSuggestions(this)">
@@ -173,15 +182,24 @@
                 </div>
             </div>
         </div>
+
+        <div id="game-box">
+            <h2 style="color: white; text-shadow: 2px 2px #000;">NO INTERNET - FLY!</h2>
+            <canvas id="gameCanvas" width="400" height="500"></canvas>
+            <button class="key-btn" onclick="stopGame()" style="margin-top: 20px; background: #555;">Back</button>
+        </div>
     </div>
 
     <script>
         let tabs = [];
         let activeTabId = null;
+        let audioPlayers = {};
+        let searchHistory = JSON.parse(localStorage.getItem('nexus_history') || '[]');
+        
         const i18n = {
-            ru: { welcome: "РЕГИСТРАЦИЯ NEXUS", set: "Настройки", t: "Тема:", l: "Язык:", r: "Сбросить аккаунт", g: "Добро пожаловать", s: "Что желаете найти?" },
-            en: { welcome: "NEXUS REGISTRATION", set: "Settings", t: "Theme:", l: "Language:", r: "Reset Account", g: "Welcome", s: "What do you want to find?" },
-            zh: { welcome: "NEXUS 注册", set: "设置", t: "主题:", l: "语言:", r: "重置账户", g: "欢迎", s: "你想找什么？" }
+            ru: { welcome: "РЕГИСТРАЦИЯ NEXUS", set: "Настройки", t: "Тема:", l: "Язык:", r: "Сбросить аккаунт", g: "Добро пожаловать", s: "Что желаете найти?", closeAll: "Закрыть всё", light: "Светлая", dark: "Тёмная", hist: "История поиска" },
+            en: { welcome: "NEXUS REGISTRATION", set: "Settings", t: "Theme:", l: "Language:", r: "Reset Account", g: "Welcome", s: "What do you want to find?", closeAll: "Close All", light: "Light", dark: "Dark", hist: "Search History" },
+            zh: { welcome: "NEXUS 注册", set: "设置", t: "主题:", l: "语言:", r: "重置账户", g: "欢迎", s: "你想找什么？", closeAll: "关闭所有", light: "亮色", dark: "暗色", hist: "搜索历史" }
         };
 
         window.onload = () => {
@@ -199,25 +217,36 @@
             if (email.endsWith('@gmail.com') && name) {
                 localStorage.setItem('nexus_user', JSON.stringify({name}));
                 location.reload();
-            } else { alert("Gmail only!"); }
+            } else { alert("Gmail only + Name!"); }
+        }
+
+        function updateHomeUI() {
+            const user = JSON.parse(localStorage.getItem('nexus_user'));
+            const lang = localStorage.getItem('nexus_lang') || 'ru';
+            if (!user) return;
+            document.getElementById('home-greeting').innerText = `${i18n[lang].g}, ${user.name}!`;
+            document.getElementById('home-sub').innerText = i18n[lang].s;
+            document.getElementById('close-all-btn').innerText = i18n[lang].closeAll;
+            document.getElementById('close-all-btn').style.display = tabs.length > 3 ? 'block' : 'none';
         }
 
         function createNewTab() {
             const id = Date.now();
-            tabs.push({ id, isHome: true });
+            tabs.push({ id, isHome: true, title: 'Nexus' });
+            
             const tabBtn = document.createElement('div');
             tabBtn.className = 'tab';
             tabBtn.id = `tab-btn-${id}`;
-            tabBtn.innerHTML = `Nexus <span onclick="closeTab(event, ${id})">×</span>`;
+            tabBtn.innerHTML = `<div class="t-txt">Nexus</div> <span onclick="closeTab(event, ${id})">×</span>`;
             tabBtn.onclick = () => switchTab(id);
-            document.getElementById('tabs-bar').insertBefore(tabBtn, document.querySelector('#tabs-bar .key-btn'));
+            document.getElementById('tabs-bar').insertBefore(tabBtn, document.getElementById('close-all-btn'));
+            
             const ifr = document.createElement('iframe');
             ifr.id = `view-${id}`;
             document.getElementById('viewports').appendChild(ifr);
+            
             switchTab(id);
-            const home = document.getElementById('nexus-home-screen');
-            home.classList.remove('loaded');
-            setTimeout(() => home.classList.add('loaded'), 50);
+            updateHomeUI();
         }
 
         function switchTab(id) {
@@ -226,45 +255,67 @@
             document.querySelectorAll('.tab, iframe').forEach(el => el.classList.remove('active'));
             document.getElementById(`tab-btn-${id}`).classList.add('active');
             document.getElementById(`view-${id}`).classList.add('active');
+            
             const home = document.getElementById('nexus-home-screen');
             if (tab.isHome) {
                 home.classList.remove('hidden');
-                const user = JSON.parse(localStorage.getItem('nexus_user'));
-                const lang = localStorage.getItem('nexus_lang') || 'ru';
-                document.getElementById('home-greeting').innerText = `${i18n[lang].g}, ${user.name}!`;
-                document.getElementById('main-search').value = "";
-            } else home.classList.add('hidden');
+                document.getElementById('main-search').value = ""; // Исправлено: чистим при переходе домой
+                updateHomeUI();
+                setTimeout(() => home.classList.add('loaded'), 50);
+            } else {
+                home.classList.add('hidden');
+            }
         }
 
         function navigate(query) {
             if (!query) return;
-            document.getElementById('suggestions').style.display = 'none';
-            let url = query.includes('.') && !query.includes(' ') ? (query.startsWith('http') ? query : 'https://' + query) : `https://www.google.com/search?q=${encodeURIComponent(query)}&igu=1`;
             const tab = tabs.find(t => t.id === activeTabId);
+            
+            // История
+            if(!searchHistory.includes(query)) {
+                searchHistory.unshift(query);
+                if(searchHistory.length > 20) searchHistory.pop();
+                localStorage.setItem('nexus_history', JSON.stringify(searchHistory));
+            }
+
+            // Название вкладки
+            tab.title = query;
+            document.querySelector(`#tab-btn-${activeTabId} .t-txt`).innerText = query;
+
+            if (query === "GoreBass") {
+                if (audioPlayers[activeTabId]) audioPlayers[activeTabId].pause();
+                audioPlayers[activeTabId] = new Audio('GoreBass.mp3');
+                audioPlayers[activeTabId].play();
+            }
+
+            if (!navigator.onLine) { startGame(); return; }
+
+            let url = query.includes('.') && !query.includes(' ') ? (query.startsWith('http') ? query : 'https://' + query) : `https://www.google.com/search?q=${encodeURIComponent(query)}&igu=1`;
             tab.isHome = false;
             document.getElementById('nexus-home-screen').classList.add('hidden');
             document.getElementById(`view-${activeTabId}`).src = url;
+            document.getElementById('suggestions').style.display = 'none';
         }
 
-        function fetchSuggestions(input) {
-            const query = input.value;
-            if (query.length < 2) { document.getElementById('suggestions').style.display = 'none'; return; }
-            const script = document.createElement('script');
-            script.src = `https://suggestqueries.google.com/complete/search?client=firefox&q=${query}&callback=showSuggest`;
-            document.body.appendChild(script);
+        function openHistory() {
+            const lang = localStorage.getItem('nexus_lang') || 'ru';
+            document.getElementById('hist-title').innerText = i18n[lang].hist;
+            const container = document.getElementById('history-container');
+            container.innerHTML = searchHistory.map((q, i) => `
+                <div class="history-item">
+                    <span onclick="navigate('${q}'); closeHistory();" style="flex:1">${q}</span>
+                    <span class="del" onclick="deleteHistory(${i})">×</span>
+                </div>
+            `).join('');
+            document.getElementById('history-modal').style.display = 'flex';
         }
 
-        window.showSuggest = (data) => {
-            const box = document.getElementById('suggestions');
-            box.innerHTML = data[1].slice(0, 5).map(s => `<div class="suggest-item" onclick="navigate('${s}')">${s}</div>`).join('');
-            box.style.display = 'block';
-        };
-
-        function goHome() {
-            const tab = tabs.find(t => t.id === activeTabId);
-            tab.isHome = true;
-            switchTab(activeTabId);
+        function deleteHistory(i) {
+            searchHistory.splice(i, 1);
+            localStorage.setItem('nexus_history', JSON.stringify(searchHistory));
+            openHistory();
         }
+        function closeHistory() { document.getElementById('history-modal').style.display = 'none'; }
 
         function changeLang() {
             const l = document.getElementById('lang-select-box').value;
@@ -275,20 +326,64 @@
             document.getElementById('set-theme-lbl').innerText = t.t;
             document.getElementById('set-lang-lbl').innerText = t.l;
             document.getElementById('set-reset-btn').innerText = t.r;
-            document.getElementById('home-sub').innerText = t.s;
+            // Перевод тем (Исправлено)
+            document.getElementById('opt-light').innerText = t.light;
+            document.getElementById('opt-dark').innerText = t.dark;
+            updateHomeUI();
         }
 
-        function toggleTheme() {
-            const theme = document.getElementById('theme-select').value;
-            applyTheme(theme);
+        /* ИГРА (Упрощенно для примера) */
+        let gameRunning = false, balloonX = 200, obstacles = [], score = 0;
+        function startGame() { document.getElementById('game-box').style.display = 'flex'; gameRunning = true; balloonX = 200; obstacles = []; score = 0; requestAnimationFrame(gameLoop); }
+        function stopGame() { document.getElementById('game-box').style.display = 'none'; gameRunning = false; }
+        function gameLoop() {
+            if(!gameRunning) return;
+            const ctx = document.getElementById('gameCanvas').getContext('2d');
+            ctx.clearRect(0,0,400,500);
+            ctx.fillStyle = "red"; ctx.beginPath(); ctx.arc(balloonX, 400, 20, 0, Math.PI*2); ctx.fill();
+            if(Math.random() < 0.03) obstacles.push({x: Math.random()*380, y: 0});
+            ctx.fillStyle = "black";
+            obstacles.forEach(o => { o.y += 4; ctx.fillRect(o.x, o.y, 20, 20); });
+            obstacles = obstacles.filter(o => o.y < 500);
+            requestAnimationFrame(gameLoop);
         }
 
+        function handleGlobalKey(e) {
+            if(!gameRunning) return;
+            if(e.key === "ArrowLeft") balloonX -= 25;
+            if(e.key === "ArrowRight") balloonX += 25;
+        }
+
+        function closeTab(e, id) {
+            if(e) e.stopPropagation();
+            if (audioPlayers[id]) { audioPlayers[id].pause(); delete audioPlayers[id]; }
+            tabs = tabs.filter(t => t.id !== id);
+            document.getElementById(`tab-btn-${id}`).remove();
+            document.getElementById(`view-${id}`).remove();
+            if (tabs.length === 0) createNewTab();
+            else if (id === activeTabId) switchTab(tabs[0].id);
+            updateHomeUI();
+        }
+
+        function closeAllTabs() { tabs.slice().forEach(t => closeTab(null, t.id)); }
+        function fetchSuggestions(input) {
+            const query = input.value;
+            if (query.length < 2) { document.getElementById('suggestions').style.display = 'none'; return; }
+            const script = document.createElement('script');
+            script.src = `https://suggestqueries.google.com/complete/search?client=firefox&q=${query}&callback=showSuggest`;
+            document.body.appendChild(script);
+        }
+        window.showSuggest = (data) => {
+            const box = document.getElementById('suggestions');
+            box.innerHTML = data[1].slice(0, 5).map(s => `<div class="suggest-item" onclick="navigate('${s}')">${s}</div>`).join('');
+            box.style.display = 'block';
+        };
+        function toggleTheme() { applyTheme(document.getElementById('theme-select').value); }
         function applyTheme(theme) {
             document.body.className = theme + '-mode';
             localStorage.setItem('nexus_theme', theme);
             document.getElementById('theme-select').value = theme;
         }
-
         function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; }
         function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
         function resetAccount() { localStorage.clear(); location.reload(); }
@@ -296,8 +391,7 @@
         function goBack() { document.getElementById(`view-${activeTabId}`).contentWindow.history.back(); }
         function goForward() { document.getElementById(`view-${activeTabId}`).contentWindow.history.forward(); }
         function refreshTab() { const i = document.getElementById(`view-${activeTabId}`); i.src = i.src; }
-        function closeTab(e, id) { e.stopPropagation(); if (tabs.length > 1) { tabs = tabs.filter(t => t.id !== id); document.getElementById(`tab-btn-${id}`).remove(); document.getElementById(`view-${id}`).remove(); switchTab(tabs[0].id); } }
+        function goHome() { const tab = tabs.find(t => t.id === activeTabId); tab.isHome = true; switchTab(activeTabId); }
     </script>
 </body>
-
 </html>
